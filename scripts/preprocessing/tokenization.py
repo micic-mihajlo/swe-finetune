@@ -4,23 +4,20 @@ from typing import Dict, Any, List
 import numpy as np
 
 
-def get_tokenizer_and_renderer(model_name: str, max_length: int = 4096, training_client=None):
+def get_tokenizer_and_renderer(training_client, model_name: str, max_length: int = 4096):
     """Get tokenizer and renderer for a model.
 
     Args:
+        training_client: Tinker TrainingClient to get tokenizer from
         model_name: Model name for renderer lookup
         max_length: Maximum sequence length
-        training_client: Tinker TrainingClient to get tokenizer from
     """
     from tinker_cookbook.renderers import get_renderer
     from tinker_cookbook.model_info import get_recommended_renderer_name
 
-    if training_client is None:
-        raise ValueError("training_client is required to get tokenizer")
-
     tokenizer = training_client.get_tokenizer()
     renderer_name = get_recommended_renderer_name(model_name)
-    renderer = get_renderer(name=renderer_name, tokenizer=tokenizer, max_length=max_length)
+    renderer = get_renderer(renderer_name, tokenizer, max_length=max_length)
     return tokenizer, renderer
 
 
