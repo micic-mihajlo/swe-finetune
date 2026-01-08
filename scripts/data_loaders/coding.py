@@ -91,11 +91,16 @@ def load_commitpackft(
 
     Format: commit message as instruction, code diff as response.
     """
-    ds = load_dataset(
-        "bigcode/commitpackft",
-        split="train",
-        streaming=streaming,
-    )
+    try:
+        ds = load_dataset(
+            "bigcode/commitpackft",
+            split="train",
+            streaming=streaming,
+            trust_remote_code=True,
+        )
+    except Exception as e:
+        print(f"Warning: Could not load commitpackft: {e}")
+        return
 
     count = 0
     for example in ds:
