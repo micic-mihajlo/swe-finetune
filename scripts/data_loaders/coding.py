@@ -27,14 +27,24 @@ def load_magicoder(streaming: bool = False, max_samples: Optional[int] = None) -
         if max_samples and count >= max_samples:
             break
 
-        yield {
-            "messages": [
-                {"role": "user", "content": example["instruction"]},
-                {"role": "assistant", "content": example["response"]},
-            ],
-            "source": "magicoder",
-        }
-        count += 1
+        try:
+            # Try different column names
+            user_content = example.get("problem") or example.get("instruction") or example.get("question", "")
+            assistant_content = example.get("solution") or example.get("response") or example.get("output", "")
+
+            if not user_content or not assistant_content:
+                continue
+
+            yield {
+                "messages": [
+                    {"role": "user", "content": user_content},
+                    {"role": "assistant", "content": assistant_content},
+                ],
+                "source": "magicoder",
+            }
+            count += 1
+        except Exception as e:
+            continue
 
 
 def load_evol_instruct(streaming: bool = False, max_samples: Optional[int] = None) -> Iterator[Dict[str, Any]]:
@@ -53,14 +63,23 @@ def load_evol_instruct(streaming: bool = False, max_samples: Optional[int] = Non
         if max_samples and count >= max_samples:
             break
 
-        yield {
-            "messages": [
-                {"role": "user", "content": example["instruction"]},
-                {"role": "assistant", "content": example["output"]},
-            ],
-            "source": "evol_instruct",
-        }
-        count += 1
+        try:
+            user_content = example.get("instruction") or example.get("problem") or example.get("question", "")
+            assistant_content = example.get("output") or example.get("response") or example.get("solution", "")
+
+            if not user_content or not assistant_content:
+                continue
+
+            yield {
+                "messages": [
+                    {"role": "user", "content": user_content},
+                    {"role": "assistant", "content": assistant_content},
+                ],
+                "source": "evol_instruct",
+            }
+            count += 1
+        except Exception:
+            continue
 
 
 def load_commitpackft(

@@ -29,16 +29,25 @@ def load_nl_shell_multi(streaming: bool = False, max_samples: Optional[int] = No
         if max_samples and count >= max_samples:
             break
 
-        instruction = f"Write a bash command to: {example['description']}"
+        try:
+            desc = example.get("description") or example.get("nl") or example.get("query", "")
+            cmd = example.get("command") or example.get("bash") or example.get("answer", "")
 
-        yield {
-            "messages": [
-                {"role": "user", "content": instruction},
-                {"role": "assistant", "content": example["command"]},
-            ],
-            "source": "nl_shell_multi",
-        }
-        count += 1
+            if not desc or not cmd:
+                continue
+
+            instruction = f"Write a bash command to: {desc}"
+
+            yield {
+                "messages": [
+                    {"role": "user", "content": instruction},
+                    {"role": "assistant", "content": cmd},
+                ],
+                "source": "nl_shell_multi",
+            }
+            count += 1
+        except Exception:
+            continue
 
 
 def load_nl2sh_alfa(streaming: bool = False, max_samples: Optional[int] = None) -> Iterator[Dict[str, Any]]:
@@ -57,17 +66,26 @@ def load_nl2sh_alfa(streaming: bool = False, max_samples: Optional[int] = None) 
         if max_samples and count >= max_samples:
             break
 
-        instruction = f"Write a bash command to: {example['nl']}"
+        try:
+            desc = example.get("nl") or example.get("description") or example.get("query", "")
+            cmd = example.get("bash") or example.get("command") or example.get("answer", "")
 
-        yield {
-            "messages": [
-                {"role": "user", "content": instruction},
-                {"role": "assistant", "content": example["bash"]},
-            ],
-            "source": "nl2sh_alfa",
-            "difficulty": example.get("difficulty", "unknown"),
-        }
-        count += 1
+            if not desc or not cmd:
+                continue
+
+            instruction = f"Write a bash command to: {desc}"
+
+            yield {
+                "messages": [
+                    {"role": "user", "content": instruction},
+                    {"role": "assistant", "content": cmd},
+                ],
+                "source": "nl2sh_alfa",
+                "difficulty": example.get("difficulty", "unknown"),
+            }
+            count += 1
+        except Exception:
+            continue
 
 
 def load_cli_commands_explained(streaming: bool = False, max_samples: Optional[int] = None) -> Iterator[Dict[str, Any]]:
