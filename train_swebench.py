@@ -39,32 +39,58 @@ MAX_SAMPLES = None    # Set to e.g. 10000 for faster testing
 # DATA LOADING
 # ============================================================================
 
-def parse_trajectory(trajectory):
-    """Parse agent trajectory into conversation messages."""
+def parse_swe_agent_trajectory(trajectory):
+    """Parse nebius/SWE-agent-trajectories format.
+
+    Each step has: role, text, mask, system_prompt, cutoff_date
+    """
     messages = []
 
-    if isinstance(trajectory, str):
-        try:
-            trajectory = json.loads(trajectory)
-        except json.JSONDecodeError:
-            return [{"role": "assistant", "content": trajectory}]
+    if not isinstance(trajectory, list):
+        return messages
 
-    if isinstance(trajectory, list):
-        for step in trajectory:
-            if isinstance(step, dict):
-                if "observation" in step:
-                    messages.append({"role": "user", "content": step["observation"]})
-                if "action" in step:
-                    messages.append({"role": "assistant", "content": step["action"]})
-                elif "role" in step and "content" in step:
-                    messages.append(step)
-    elif isinstance(trajectory, dict):
-        if "messages" in trajectory:
-            messages = trajectory["messages"]
-        elif "steps" in trajectory:
-            return parse_trajectory(trajectory["steps"])
+    for step in trajectory:
+        if not isinstance(step, dict):
+            continue
+
+        role = step.get("role", "")
+        text = step.get("text", "")
+
+        if not text:
+            continue
+
+        # Map roles
+        if role == "user":
+            messages.append({"role": "user", "content": text})
+        elif role == "assistant":
+            messages.append({"role": "assistant", "content": text})
+        elif role == "system":
+            messages.append({"role": "system", "content": text})
 
     return messages
+
+
+def parse_swe_smith_messages(messages_str):
+    """Parse SWE-bench/SWE-smith-trajectories format.
+
+    messages is a JSON string containing conversation.
+    """
+    if not messages_str:
+        return []
+
+    try:
+        messages = json.loads(messages_str)
+        if isinstance(messages, list):
+            # Validate format
+            result = []
+            for msg in messages:
+                if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                    result.append({"role": msg["role"], "content": msg["content"]})
+            return result
+    except json.JSONDecodeError:
+        pass
+
+    return []
 
 
 def load_swebench_data(max_samples=None):
@@ -72,6 +98,7 @@ def load_swebench_data(max_samples=None):
     all_data = []
 
     # Dataset 1: nebius/SWE-agent-trajectories
+    # Columns: instance_id, model_name, target, trajectory (list of {role, text, ...}), exit_status, generated_patch, eval_logs
     print("Loading SWE-agent trajectories...")
     try:
         ds1 = load_dataset("nebius/SWE-agent-trajectories", split="train", streaming=True)
@@ -80,25 +107,19 @@ def load_swebench_data(max_samples=None):
             if max_samples and count >= max_samples // 2:
                 break
 
-            trajectory = example.get("trajectory", example.get("messages", []))
-            messages = parse_trajectory(trajectory)
+            trajectory = example.get("trajectory", [])
+            messages = parse_swe_agent_trajectory(trajectory)
 
-            if not messages:
+            if not messages or len(messages) < 2:
                 continue
 
-            problem = example.get("problem_statement", example.get("issue", ""))
-            if problem and (not messages or messages[0]["role"] != "system"):
-                messages.insert(0, {
-                    "role": "system",
-                    "content": f"You are a software engineer. Solve the following issue:\n\n{problem}"
-                })
-
-            all_data.append({"messages": messages, "source": "swe_agent"})
+            all_data.append({"messages": messages, "source": "swe_agent", "instance_id": example.get("instance_id", "")})
             count += 1
     except Exception as e:
         print(f"Warning: Could not load SWE-agent trajectories: {e}")
 
     # Dataset 2: SWE-bench/SWE-smith-trajectories
+    # Columns: split, messages (JSON string), instance_id, resolved, model, traj_id, patch
     print("Loading SWE-smith trajectories...")
     try:
         ds2 = load_dataset("SWE-bench/SWE-smith-trajectories", split="train", streaming=True)
@@ -107,20 +128,13 @@ def load_swebench_data(max_samples=None):
             if max_samples and count >= max_samples // 2:
                 break
 
-            trajectory = example.get("trajectory", example.get("messages", []))
-            messages = parse_trajectory(trajectory)
+            messages_str = example.get("messages", "")
+            messages = parse_swe_smith_messages(messages_str)
 
-            if not messages:
+            if not messages or len(messages) < 2:
                 continue
 
-            problem = example.get("problem_statement", example.get("issue", ""))
-            if problem and (not messages or messages[0]["role"] != "system"):
-                messages.insert(0, {
-                    "role": "system",
-                    "content": f"You are a software engineer. Solve the following issue:\n\n{problem}"
-                })
-
-            all_data.append({"messages": messages, "source": "swe_smith"})
+            all_data.append({"messages": messages, "source": "swe_smith", "instance_id": example.get("instance_id", "")})
             count += 1
     except Exception as e:
         print(f"Warning: Could not load SWE-smith trajectories: {e}")
