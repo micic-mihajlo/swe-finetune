@@ -1,54 +1,41 @@
 # SWE-Finetune
 
-Fine-tuning Qwen3-30B-A3B for **SWE-bench** and **TerminalBench** using [Tinker API](https://tinker-docs.thinkingmachines.ai/).
+Fine-tune Qwen3-30B-A3B for SWE-bench using Tinker API.
 
-## Quick Start
+## Setup
 
-1. Open `notebooks/swe_finetune.ipynb` in Google Colab
-2. Set your `TINKER_API_KEY`
-3. Select phase (1-5) and run
-
-## Training Phases
-
-| Phase | Focus | Datasets | Examples |
-|-------|-------|----------|----------|
-| 1 | Coding Foundation | Magicoder, Evol-Instruct | ~155K |
-| 2 | Terminal/Shell | NL-SHELL-MULTI, NL2SH-ALFA | ~145K |
-| 3 | Tool-Use | xLAM, Glaive function calling | ~180K |
-| **4** | **SWE-bench Trajectories** | SWE-agent-trajectories, SWE-smith | **~156K** |
-| 5 | Competitive Programming | TACO, CodeForces-CoT | ~35K |
-
-**Phase 4 is critical** for SWE-bench performance.
-
-## Structure
-
+```bash
+pip install tinker datasets transformers tqdm numpy
+export TINKER_API_KEY="your-key-here"
 ```
-swe-finetune/
-├── notebooks/
-│   └── swe_finetune.ipynb    # Main training notebook
-├── configs/                   # Phase configurations
-├── scripts/
-│   ├── data_loaders/         # HuggingFace dataset loaders
-│   ├── preprocessing/        # Tokenization utilities
-│   └── training/             # Training loop & utils
-├── skills/tinker/            # Tinker API reference docs
-└── FINETUNING_STRATEGY.md    # Detailed strategy
+
+## Usage
+
+```bash
+python train_swebench.py
 ```
+
+The script:
+1. Loads the Phase 1 (coding) checkpoint
+2. Trains on SWE-bench agent trajectories (~156K examples)
+3. Saves the final model
+4. Tests inference
+
+## Checkpoints
+
+- **Phase 1 (Coding)**: `tinker://606ee7d9-e694-5c39-940d-023030fec687:train:0/weights/phase1_coding-final`
+- **Phase 4 (SWE-bench)**: Run `train_swebench.py` to create
 
 ## Configuration
 
-Each phase has its own config in `configs/`:
-- `phase1_coding.py` - LR: 5e-5, Batch: 128, MaxLen: 4096
-- `phase2_terminal.py` - LR: 3e-5, Batch: 64, MaxLen: 2048
-- `phase3_tooluse.py` - LR: 3e-5, Batch: 32, MaxLen: 8192
-- `phase4_swebench.py` - LR: 2e-5, Batch: 16, MaxLen: 16384
-- `phase5_competitive.py` - LR: 3e-5, Batch: 32, MaxLen: 8192
+Edit the top of `train_swebench.py`:
 
-## Expected Results
-
-Based on similar training approaches:
-- **SWE-bench Verified**: 35-45% (up from baseline)
-- **TerminalBench**: Competitive performance
+```python
+LEARNING_RATE = 2e-5   # Lower for fine-tuning
+BATCH_SIZE = 16        # Smaller for long sequences
+MAX_LENGTH = 16384     # SWE-bench traces are long
+MAX_SAMPLES = None     # Set to e.g. 10000 for testing
+```
 
 ## License
 
