@@ -15,10 +15,6 @@ checkpoints/
 *.pt
 *.bin
 
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb_checkpoints
-
 # Environment
 .env
 .venv/

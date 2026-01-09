@@ -13,7 +13,6 @@ Usage:
 """
 
 import argparse
-import os
 import json
 import random
 import numpy as np
@@ -25,10 +24,6 @@ import tinker
 from tinker import types
 from tinker.types.tensor_data import TensorData
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-
 MODEL_NAME = "Qwen/Qwen3-30B-A3B"
 LORA_RANK = 32
 
@@ -38,7 +33,7 @@ PHASE1_CONFIG = {
     "learning_rate": 5e-5,
     "batch_size": 128,
     "max_length": 4096,
-    "checkpoint": None,  # Start fresh
+    "checkpoint": None,
 }
 
 # Phase 2: SWE-bench Trajectories
@@ -47,19 +42,14 @@ PHASE2_CONFIG = {
     "learning_rate": 2e-5,
     "batch_size": 16,
     "max_length": 16384,
-    "checkpoint": None,  # Set after Phase 1 completes
+    "checkpoint": None,
 }
 
-# ============================================================================
-# PHASE 1: CODING DATA
-# ============================================================================
 
 def load_coding_data(max_samples=None):
     """Load Magicoder and Evol-Instruct datasets."""
     all_data = []
 
-    # Dataset 1: Magicoder-OSS-Instruct-75K
-    # Columns: problem, solution, lang, etc.
     print("Loading Magicoder...")
     try:
         ds1 = load_dataset("ise-uiuc/Magicoder-OSS-Instruct-75K", split="train", streaming=True)
@@ -85,8 +75,6 @@ def load_coding_data(max_samples=None):
     except Exception as e:
         print(f"Warning: Could not load Magicoder: {e}")
 
-    # Dataset 2: Evol-Instruct-Code-80k
-    # Columns: instruction, output
     print("Loading Evol-Instruct...")
     try:
         ds2 = load_dataset("nickrosh/Evol-Instruct-Code-80k-v1", split="train", streaming=True)
@@ -117,15 +105,8 @@ def load_coding_data(max_samples=None):
     return all_data
 
 
-# ============================================================================
-# PHASE 2: SWE-BENCH DATA
-# ============================================================================
-
 def parse_swe_agent_trajectory(trajectory):
-    """Parse nebius/SWE-agent-trajectories format.
-
-    Each step has: role, text, mask, system_prompt, cutoff_date
-    """
+    """Parse nebius/SWE-agent-trajectories format into messages."""
     messages = []
 
     if not isinstance(trajectory, list):
@@ -148,10 +129,7 @@ def parse_swe_agent_trajectory(trajectory):
 
 
 def parse_swe_smith_messages(messages_str):
-    """Parse SWE-bench/SWE-smith-trajectories format.
-
-    messages is a JSON string containing conversation.
-    """
+    """Parse SWE-smith trajectories (JSON string) into messages."""
     if not messages_str:
         return []
 
@@ -193,8 +171,6 @@ def load_swebench_data(max_samples=None):
     except Exception as e:
         print(f"Warning: Could not load SWE-agent trajectories: {e}")
 
-    # Dataset 2: SWE-bench/SWE-smith-trajectories (76K)
-    # Has splits: tool, xml, ticks (not train)
     print("Loading SWE-smith trajectories...")
     try:
         count = 0
@@ -222,15 +198,11 @@ def load_swebench_data(max_samples=None):
     return all_data
 
 
-# ============================================================================
-# TOKENIZATION
-# ============================================================================
-
 def messages_to_datum(messages, tokenizer, max_length, train_on_last_only=False):
     """Convert messages to Tinker Datum."""
     try:
         text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-    except:
+    except Exception:
         parts = []
         for msg in messages:
             role = msg.get("role", "user")
@@ -269,7 +241,6 @@ def messages_to_datum(messages, tokenizer, max_length, train_on_last_only=False)
             if in_assistant:
                 weights[i] = 1.0
 
-    # Fallback
     if sum(weights) == 0:
         for i in range(len(weights) // 4, len(weights)):
             weights[i] = 1.0
@@ -298,10 +269,6 @@ def compute_mean_nll(logprobs, weights):
     return total_loss / total_weight if total_weight > 0 else 0.0
 
 
-# ============================================================================
-# TRAINING
-# ============================================================================
-
 def train_phase(phase: int, max_samples: int = None, checkpoint: str = None):
     """Train a single phase."""
 
@@ -316,9 +283,7 @@ def train_phase(phase: int, max_samples: int = None, checkpoint: str = None):
     else:
         raise ValueError(f"Unknown phase: {phase}")
 
-    print("=" * 60)
-    print(f"PHASE {phase}: {config['name']}")
-    print("=" * 60)
+    print(f"\n--- Phase {phase}: {config['name']} ---")
 
     # Load tokenizer
     print(f"\nLoading tokenizer for {MODEL_NAME}...")
@@ -415,18 +380,12 @@ def train_phase(phase: int, max_samples: int = None, checkpoint: str = None):
     final_save = training_client.save_state(name=f"{config['name']}-final").result()
     sampler_save = training_client.save_weights_for_sampler(name=f"{config['name']}-sampler").result()
 
-    print(f"\n{'=' * 60}")
-    print(f"PHASE {phase} COMPLETE!")
-    print(f"{'=' * 60}")
+    print(f"\n--- Phase {phase} complete ---")
     print(f"Avg NLL: {np.mean(losses):.4f}")
     print(f"Final state: {final_save.path}")
     print(f"Sampler path: {sampler_save.path}")
 
-    # Test inference
-    print("\n" + "=" * 60)
-    print("Testing inference...")
-    print("=" * 60)
-
+    print("\nTesting inference...")
     sampling_client = service_client.create_sampling_client(model_path=sampler_save.path)
 
     if phase == 1:
@@ -450,10 +409,6 @@ def train_phase(phase: int, max_samples: int = None, checkpoint: str = None):
 
     return final_save.path
 
-
-# ============================================================================
-# MAIN
-# ============================================================================
 
 def main():
     parser = argparse.ArgumentParser(description="SWE-bench Fine-tuning")

@@ -2,7 +2,7 @@
 
 Fine-tune Qwen3-30B-A3B for SWE-bench using [Tinker API](https://tinker-docs.thinkingmachines.ai/).
 
-## The Story
+## Overview
 
 Two-phase training approach:
 
@@ -50,12 +50,7 @@ python train.py --phase 1 --max 10000  # Only 10K samples
 
 ## Checkpoints
 
-After training:
-
-| Phase | Checkpoint |
-|-------|------------|
-| 1 (Coding) | `tinker://606ee7d9-e694-5c39-940d-023030fec687:train:0/weights/phase1_coding-final` |
-| 2 (SWE-bench) | Run Phase 2 to create |
+My Phase 1 checkpoint: `tinker://606ee7d9-e694-5c39-940d-023030fec687:train:0/weights/phase1_coding-final`
 
 ## Configuration
 
