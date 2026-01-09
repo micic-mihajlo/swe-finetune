@@ -194,22 +194,26 @@ def load_swebench_data(max_samples=None):
         print(f"Warning: Could not load SWE-agent trajectories: {e}")
 
     # Dataset 2: SWE-bench/SWE-smith-trajectories (76K)
+    # Has splits: tool, xml, ticks (not train)
     print("Loading SWE-smith trajectories...")
     try:
-        ds2 = load_dataset("SWE-bench/SWE-smith-trajectories", split="train", streaming=True)
         count = 0
-        for example in tqdm(ds2, desc="SWE-smith"):
+        for split_name in ["tool", "xml", "ticks"]:
             if max_samples and count >= max_samples // 2:
                 break
+            ds2 = load_dataset("SWE-bench/SWE-smith-trajectories", split=split_name, streaming=True)
+            for example in tqdm(ds2, desc=f"SWE-smith/{split_name}"):
+                if max_samples and count >= max_samples // 2:
+                    break
 
-            messages_str = example.get("messages", "")
-            messages = parse_swe_smith_messages(messages_str)
+                messages_str = example.get("messages", "")
+                messages = parse_swe_smith_messages(messages_str)
 
-            if not messages or len(messages) < 2:
-                continue
+                if not messages or len(messages) < 2:
+                    continue
 
-            all_data.append({"messages": messages, "source": "swe_smith"})
-            count += 1
+                all_data.append({"messages": messages, "source": "swe_smith"})
+                count += 1
     except Exception as e:
         print(f"Warning: Could not load SWE-smith trajectories: {e}")
 
