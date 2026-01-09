@@ -4,11 +4,11 @@ SWE-bench Fine-tuning Script
 
 Two-phase training for Qwen3-30B-A3B:
   Phase 1: Coding foundation (Magicoder, Evol-Instruct)
-  Phase 4: SWE-bench agent trajectories
+  Phase 2: SWE-bench agent trajectories
 
 Usage:
   python train.py --phase 1              # Start fresh, train on coding
-  python train.py --phase 4              # Load Phase 1, train on SWE-bench
+  python train.py --phase 2              # Load Phase 1, train on SWE-bench
   python train.py --phase 1 --max 10000  # Quick test with 10K samples
 """
 
@@ -41,9 +41,9 @@ PHASE1_CONFIG = {
     "checkpoint": None,  # Start fresh
 }
 
-# Phase 4: SWE-bench Trajectories
-PHASE4_CONFIG = {
-    "name": "phase4_swebench",
+# Phase 2: SWE-bench Trajectories
+PHASE2_CONFIG = {
+    "name": "phase2_swebench",
     "learning_rate": 2e-5,
     "batch_size": 16,
     "max_length": 16384,
@@ -118,7 +118,7 @@ def load_coding_data(max_samples=None):
 
 
 # ============================================================================
-# PHASE 4: SWE-BENCH DATA
+# PHASE 2: SWE-BENCH DATA
 # ============================================================================
 
 def parse_swe_agent_trajectory(trajectory):
@@ -305,8 +305,8 @@ def train_phase(phase: int, max_samples: int = None, checkpoint: str = None):
         config = PHASE1_CONFIG
         data_loader = load_coding_data
         train_on_last = False
-    elif phase == 4:
-        config = PHASE4_CONFIG
+    elif phase == 2:
+        config = PHASE2_CONFIG
         data_loader = load_swebench_data
         train_on_last = True
     else:
@@ -453,18 +453,18 @@ def train_phase(phase: int, max_samples: int = None, checkpoint: str = None):
 
 def main():
     parser = argparse.ArgumentParser(description="SWE-bench Fine-tuning")
-    parser.add_argument("--phase", type=int, required=True, choices=[1, 4],
-                        help="Training phase: 1 (coding) or 4 (SWE-bench)")
+    parser.add_argument("--phase", type=int, required=True, choices=[1, 2],
+                        help="Training phase: 1 (coding) or 2 (SWE-bench)")
     parser.add_argument("--max", type=int, default=None,
                         help="Max samples (for testing)")
     parser.add_argument("--checkpoint", type=str, default=None,
-                        help="Checkpoint to resume from (required for phase 4)")
+                        help="Checkpoint to resume from (required for phase 2)")
     args = parser.parse_args()
 
-    # Phase 4 requires Phase 1 checkpoint
-    if args.phase == 4 and not args.checkpoint:
-        print("ERROR: Phase 4 requires --checkpoint (Phase 1 final checkpoint)")
-        print("Example: python train.py --phase 4 --checkpoint 'tinker://...'")
+    # Phase 2 requires Phase 1 checkpoint
+    if args.phase == 2 and not args.checkpoint:
+        print("ERROR: Phase 2 requires --checkpoint (Phase 1 final checkpoint)")
+        print("Example: python train.py --phase 2 --checkpoint 'tinker://...'")
         return
 
     train_phase(

@@ -10,11 +10,11 @@ Two-phase training approach:
    - Magicoder-OSS-Instruct-75K
    - Evol-Instruct-Code-80K
 
-2. **Phase 4: SWE-bench Trajectories** (~156K examples)
+2. **Phase 2: SWE-bench Trajectories** (~156K examples)
    - nebius/SWE-agent-trajectories (80K)
    - SWE-bench/SWE-smith-trajectories (76K)
 
-Phase 1 builds general coding skills. Phase 4 teaches the model how to act as a software engineering agent solving real GitHub issues.
+Phase 1 builds general coding skills. Phase 2 teaches the model how to act as a software engineering agent solving real GitHub issues.
 
 ## Setup
 
@@ -36,10 +36,10 @@ This creates a checkpoint like:
 tinker://abc123.../weights/phase1_coding-final
 ```
 
-### Phase 4: SWE-bench Trajectories
+### Phase 2: SWE-bench Trajectories
 
 ```bash
-python train.py --phase 4 --checkpoint "tinker://abc123.../weights/phase1_coding-final"
+python train.py --phase 2 --checkpoint "tinker://abc123.../weights/phase1_coding-final"
 ```
 
 ### Quick Testing
@@ -55,7 +55,7 @@ After training:
 | Phase | Checkpoint |
 |-------|------------|
 | 1 (Coding) | `tinker://606ee7d9-e694-5c39-940d-023030fec687:train:0/weights/phase1_coding-final` |
-| 4 (SWE-bench) | Run Phase 4 to create |
+| 2 (SWE-bench) | Run Phase 2 to create |
 
 ## Configuration
 
@@ -68,7 +68,7 @@ PHASE1_CONFIG = {
     "max_length": 4096,
 }
 
-PHASE4_CONFIG = {
+PHASE2_CONFIG = {
     "learning_rate": 2e-5,
     "batch_size": 16,
     "max_length": 16384,
@@ -77,7 +77,7 @@ PHASE4_CONFIG = {
 
 ## Results
 
-Phase 1 alone gives solid coding ability. Phase 4 adds SWE-bench-specific agent behavior.
+Phase 1 alone gives solid coding ability. Phase 2 adds SWE-bench-specific agent behavior.
 
 Test after training:
 ```
